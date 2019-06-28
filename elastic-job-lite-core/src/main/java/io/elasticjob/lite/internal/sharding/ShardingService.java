@@ -101,20 +101,27 @@ public final class ShardingService {
      */
     public void shardingIfNecessary() {
         List<JobInstance> availableJobInstances = instanceService.getAvailableJobInstances();
+
+        // 判断是否需要重分片（不需要重分片） || 当前可分片的作业运行实例为空 直接返回
         if (!isNeedSharding() || availableJobInstances.isEmpty()) {
             return;
         }
+        // 判断当前节点是否是主节点[等待主节点选主成功]
         if (!leaderService.isLeaderUntilBlock()) {
             blockUntilShardingCompleted();
             return;
         }
+        // 判断是否还有执行中的作业
         waitingOtherShardingItemCompleted();
         LiteJobConfiguration liteJobConfig = configService.load(false);
         int shardingTotalCount = liteJobConfig.getTypeConfig().getCoreConfig().getShardingTotalCount();
         log.debug("Job '{}' sharding begin.", jobName);
+        //
         jobNodeStorage.fillEphemeralJobNode(ShardingNode.PROCESSING, "");
         resetShardingInfo(shardingTotalCount);
+        // 获取分片策略方式
         JobShardingStrategy jobShardingStrategy = JobShardingStrategyFactory.getStrategy(liteJobConfig.getJobShardingStrategyClass());
+
         jobNodeStorage.executeInTransaction(new PersistShardingInfoTransactionExecutionCallback(jobShardingStrategy.sharding(availableJobInstances, jobName, shardingTotalCount)));
         log.debug("Job '{}' sharding complete.", jobName);
     }
@@ -204,6 +211,7 @@ public final class ShardingService {
         public void execute(final CuratorTransactionFinal curatorTransactionFinal) throws Exception {
             for (Map.Entry<JobInstance, List<Integer>> entry : shardingResults.entrySet()) {
                 for (int shardingItem : entry.getValue()) {
+                    // 创建相关分片信息到zk
                     curatorTransactionFinal.create().forPath(jobNodePath.getFullPath(ShardingNode.getInstanceNode(shardingItem)), entry.getKey().getJobInstanceId().getBytes()).and();
                 }
             }

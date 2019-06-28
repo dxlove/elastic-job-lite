@@ -96,10 +96,13 @@ public abstract class AbstractElasticJobExecutor {
      */
     public final void execute() {
         try {
+            //STEP1： 检查作业执行环境. 目的[检查本机与注册中心的时间误差秒数是否在允许范围]
             jobFacade.checkJobExecutionEnvironment();
         } catch (final JobExecutionEnvironmentException cause) {
             jobExceptionHandler.handleException(jobName, cause);
         }
+        //STEP2：
+               //优先从本作业服务器的失效转移分片项集合获取任务
         ShardingContexts shardingContexts = jobFacade.getShardingContexts();
         if (shardingContexts.isAllowSendJobEvent()) {
             jobFacade.postJobStatusTraceEvent(shardingContexts.getTaskId(), State.TASK_STAGING, String.format("Job '%s' execute begin.", jobName));
