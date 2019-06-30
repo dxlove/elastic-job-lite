@@ -64,12 +64,19 @@ public final class LiteJobFacade implements JobFacade {
     private final JobEventBus jobEventBus;
     
     public LiteJobFacade(final CoordinatorRegistryCenter regCenter, final String jobName, final List<ElasticJobListener> elasticJobListeners, final JobEventBus jobEventBus) {
+        // 分布式作业配置服务.
         configService = new ConfigurationService(regCenter, jobName);
+        // 作业分片服务.
         shardingService = new ShardingService(regCenter, jobName);
+        // 作业运行时上下文服务.
         executionContextService = new ExecutionContextService(regCenter, jobName);
+        // 执行作业的服务.
         executionService = new ExecutionService(regCenter, jobName);
+        // 作业失效转移服务.
         failoverService = new FailoverService(regCenter, jobName);
+
         this.elasticJobListeners = elasticJobListeners;
+
         this.jobEventBus = jobEventBus;
     }
     

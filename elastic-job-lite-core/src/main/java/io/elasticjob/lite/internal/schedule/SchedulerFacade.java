@@ -73,14 +73,23 @@ public final class SchedulerFacade {
     
     public SchedulerFacade(final CoordinatorRegistryCenter regCenter, final String jobName, final List<ElasticJobListener> elasticJobListeners) {
         this.jobName = jobName;
+        // 作业配置服务
         configService = new ConfigurationService(regCenter, jobName);
+        // 主节点服务
         leaderService = new LeaderService(regCenter, jobName);
+        // 作业服务器服务
         serverService = new ServerService(regCenter, jobName);
+        // 作业运行实例服务
         instanceService = new InstanceService(regCenter, jobName);
+        // 作业分片服务
         shardingService = new ShardingService(regCenter, jobName);
+        // 执行作业的服务.
         executionService = new ExecutionService(regCenter, jobName);
+        // 作业监控服务.
         monitorService = new MonitorService(regCenter, jobName);
+        // 调解分布式作业不一致状态服务.
         reconcileService = new ReconcileService(regCenter, jobName);
+        // 作业注册中心的监听器管理者.
         listenerManager = new ListenerManager(regCenter, jobName, elasticJobListeners);
     }
     
@@ -112,13 +121,13 @@ public final class SchedulerFacade {
     public void registerStartUpInfo(final boolean enabled) {
         // 开启所有监听器.
         listenerManager.startAllListeners();
-        //选举主节点.
+        // 选举主节点.
         leaderService.electLeader();
         // 持久化作业服务器上线信息.
         serverService.persistOnline(enabled);
         // 持久化作业运行实例上线相关信息.
         instanceService.persistOnline();
-        //设置需要重新分片的标记.
+        // 设置需要重新分片的标记.
         shardingService.setReshardingFlag();
         // 初始化作业监听服务
         monitorService.listen();

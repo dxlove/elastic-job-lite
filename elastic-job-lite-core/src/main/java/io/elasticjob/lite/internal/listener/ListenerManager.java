@@ -75,14 +75,23 @@ public final class ListenerManager {
      * 开启所有监听器.
      */
     public void startAllListeners() {
+        //主节点选举监听
         electionListenerManager.start();
+        // 分片监听
         shardingListenerManager.start();
+        // 失效转移监听
         failoverListenerManager.start();
+        // 幂等性监听
         monitorExecutionListenerManager.start();
+        // 运行实例关闭监听
         shutdownListenerManager.start();
+        // 作业触发监听
         triggerListenerManager.start();
+        // 重调度监听
         rescheduleListenerManager.start();
+        // 分布式任务全部开始和结束状态监听
         guaranteeListenerManager.start();
+        // 注册中心连接状态监听
         jobNodeStorage.addConnectionStateListener(regCenterConnectionStateListener);
     }
 }
