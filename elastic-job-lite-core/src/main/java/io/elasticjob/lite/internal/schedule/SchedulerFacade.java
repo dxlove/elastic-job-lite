@@ -110,11 +110,17 @@ public final class SchedulerFacade {
      * @param enabled 作业是否启用
      */
     public void registerStartUpInfo(final boolean enabled) {
+        // 开启所有监听器.
         listenerManager.startAllListeners();
+        //选举主节点.
         leaderService.electLeader();
+        // 持久化作业服务器上线信息.
         serverService.persistOnline(enabled);
+        // 持久化作业运行实例上线相关信息.
         instanceService.persistOnline();
+        //设置需要重新分片的标记.
         shardingService.setReshardingFlag();
+        // 初始化作业监听服务
         monitorService.listen();
         if (!reconcileService.isRunning()) {
             reconcileService.startAsync();

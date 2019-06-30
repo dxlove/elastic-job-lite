@@ -79,6 +79,7 @@ public class JobScheduler {
     }
     
     private JobScheduler(final CoordinatorRegistryCenter regCenter, final LiteJobConfiguration liteJobConfig, final JobEventBus jobEventBus, final ElasticJobListener... elasticJobListeners) {
+        // 添加作业实例.【作业实例 IP+端口】
         JobRegistry.getInstance().addJobInstance(liteJobConfig.getJobName(), new JobInstance());
         this.liteJobConfig = liteJobConfig;
         this.regCenter = regCenter;
@@ -101,12 +102,18 @@ public class JobScheduler {
      * 初始化作业.
      */
     public void init() {
+        // 更新作业配置
         LiteJobConfiguration liteJobConfigFromRegCenter = schedulerFacade.updateJobConfiguration(liteJobConfig);
+        // 获取作业分片数量
         JobRegistry.getInstance().setCurrentShardingTotalCount(liteJobConfigFromRegCenter.getJobName(), liteJobConfigFromRegCenter.getTypeConfig().getCoreConfig().getShardingTotalCount());
+        // 作业调度控制器【初始化quartz quartz.jobDetail】
         JobScheduleController jobScheduleController = new JobScheduleController(
                 createScheduler(), createJobDetail(liteJobConfigFromRegCenter.getTypeConfig().getJobClass()), liteJobConfigFromRegCenter.getJobName());
+        // 添加作业调度控制器【写入java内存】
         JobRegistry.getInstance().registerJob(liteJobConfigFromRegCenter.getJobName(), jobScheduleController, regCenter);
+        // 注册作业启动信息 [开启监听|选主|设置分片标志].
         schedulerFacade.registerStartUpInfo(!liteJobConfigFromRegCenter.isDisabled());
+        // 调度作业
         jobScheduleController.scheduleJob(liteJobConfigFromRegCenter.getTypeConfig().getCoreConfig().getCron());
     }
     

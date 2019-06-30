@@ -64,6 +64,7 @@ public abstract class AbstractElasticJobExecutor {
         this.jobFacade = jobFacade;
         jobRootConfig = jobFacade.loadJobRootConfiguration(true);
         jobName = jobRootConfig.getTypeConfig().getCoreConfig().getJobName();
+        // 获取获取线程池服务
         executorService = ExecutorServiceHandlerRegistry.getExecutorServiceHandler(jobName, (ExecutorServiceHandler) getHandler(JobProperties.JobPropertiesEnum.EXECUTOR_SERVICE_HANDLER));
         jobExceptionHandler = (JobExceptionHandler) getHandler(JobProperties.JobPropertiesEnum.JOB_EXCEPTION_HANDLER);
         itemErrorMessages = new ConcurrentHashMap<>(jobRootConfig.getTypeConfig().getCoreConfig().getShardingTotalCount(), 1);
@@ -103,6 +104,8 @@ public abstract class AbstractElasticJobExecutor {
         }
         //STEP2：
                //优先从本作业服务器的失效转移分片项集合获取任务
+               // 判断是否需要执行分片 (是 判断是否为主节点  是 执行分片 否   否)
+
         ShardingContexts shardingContexts = jobFacade.getShardingContexts();
         if (shardingContexts.isAllowSendJobEvent()) {
             jobFacade.postJobStatusTraceEvent(shardingContexts.getTaskId(), State.TASK_STAGING, String.format("Job '%s' execute begin.", jobName));
@@ -122,6 +125,7 @@ public abstract class AbstractElasticJobExecutor {
             //CHECKSTYLE:ON
             jobExceptionHandler.handleException(jobName, cause);
         }
+        // 执行具体的任务方法入口
         execute(shardingContexts, JobExecutionEvent.ExecutionSource.NORMAL_TRIGGER);
         while (jobFacade.isExecuteMisfired(shardingContexts.getShardingItemParameters().keySet())) {
             jobFacade.clearMisfire(shardingContexts.getShardingItemParameters().keySet());
@@ -136,7 +140,12 @@ public abstract class AbstractElasticJobExecutor {
             jobExceptionHandler.handleException(jobName, cause);
         }
     }
-    
+
+    /***
+     * 执行任务
+     * @param shardingContexts  任务分片信息
+     * @param executionSource 线程池
+     */
     private void execute(final ShardingContexts shardingContexts, final JobExecutionEvent.ExecutionSource executionSource) {
         if (shardingContexts.getShardingItemParameters().isEmpty()) {
             if (shardingContexts.isAllowSendJobEvent()) {
@@ -144,6 +153,7 @@ public abstract class AbstractElasticJobExecutor {
             }
             return;
         }
+        // 写入任务 注册作业启动信息
         jobFacade.registerJobBegin(shardingContexts);
         String taskId = shardingContexts.getTaskId();
         if (shardingContexts.isAllowSendJobEvent()) {
@@ -153,6 +163,7 @@ public abstract class AbstractElasticJobExecutor {
             process(shardingContexts, executionSource);
         } finally {
             // TODO 考虑增加作业失败的状态，并且考虑如何处理作业失败的整体回路
+            // 注册作业完成信息.
             jobFacade.registerJobCompleted(shardingContexts);
             if (itemErrorMessages.isEmpty()) {
                 if (shardingContexts.isAllowSendJobEvent()) {
@@ -165,7 +176,12 @@ public abstract class AbstractElasticJobExecutor {
             }
         }
     }
-    
+
+    /***
+     * 任务处理器
+     * @param shardingContexts 分片信息
+     * @param executionSource 线程池
+     */
     private void process(final ShardingContexts shardingContexts, final JobExecutionEvent.ExecutionSource executionSource) {
         Collection<Integer> items = shardingContexts.getShardingItemParameters().keySet();
         if (1 == items.size()) {
@@ -175,6 +191,7 @@ public abstract class AbstractElasticJobExecutor {
             return;
         }
         final CountDownLatch latch = new CountDownLatch(items.size());
+        //
         for (final int each : items) {
             final JobExecutionEvent jobExecutionEvent = new JobExecutionEvent(shardingContexts.getTaskId(), jobName, executionSource, each);
             if (executorService.isShutdown()) {

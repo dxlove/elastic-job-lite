@@ -41,7 +41,7 @@ public final class JobInstance {
      */
     private final String jobInstanceId;
     
-    public JobInstance() {
+    public  JobInstance() {
         jobInstanceId = IpUtils.getIp() + DELIMITER + ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
     }
     
